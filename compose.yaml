@@ -1,0 +1,73 @@
+services:
+  web-n8n:
+    image: nginx:latest-alpine
+    container_name: n8n-nginx
+    restart: unless-stopped
+    mem_limit: 192m
+    cpus: "0.2"
+    ports:
+      - "800:80"
+      - "4430:443"
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    restart: unless-stopped
+    mem_limit: 192m
+    cpus: "0.2"
+    depends_on:
+      n8n-postgres:
+        condition: service_healthy
+      # n8n-redis:
+      #   condition: service_healthy
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "127.0.0.1:5678:5678"
+    networks:
+      - n8n-network
+
+  n8n-postgres:
+    image: postgres:17.6-alpine
+    container_name: n8n-postgres
+    restart: unless-stopped
+    mem_limit: 192m
+    cpus: "0.2"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "n8n"]
+      interval: 5s
+      retries: 5
+    networks:
+      - n8n-network
+
+  # n8n-redis:
+  #   image: redis:6-alpine
+  #   container_name: n8n-redis
+  #   restart: unless-stopped
+  #   command: ["redis-server", "--appendonly", "yes"]
+  #   volumes:
+  #     - staging-redis-data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     retries: 5
+  #   networks:
+  #     - n8n-network
+
+networks:
+  n8n-network:
+    name: n8n-network
+    driver: bridge
+
+volumes:
+  n8n_data:
+    name: n8n_data
+  certs:
+    name: certs
+    external: true
+  ssl:
+    name: ssl
+    external: true
+  postgres_data:
+    name: postgres_data
